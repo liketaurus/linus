@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { createInterface } from "node:readline/promises";
-import { readFileSync, writeFileSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { resolve, relative, isAbsolute } from "node:path";
+import { tools, handlers } from "./tools/index.ts";
 
 const OLLAMA = process.env.OLLAMA_HOST ?? "http://127.0.0.1:11434";
 const MODEL = process.env.AGENT_MODEL ?? "granite4:tiny-h";
@@ -24,55 +24,6 @@ type Msg = {
   content: string;
   tool_calls?: ToolCall[];
   tool_name?: string;
-};
-
-const tools = [
-  {
-    type: "function",
-    function: {
-      name: "read_file",
-      description: "Read a file from disk and return its contents.",
-      parameters: {
-        type: "object",
-        properties: { path: { type: "string" } },
-        required: ["path"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "write_file",
-      description: "Write content to a file, overwriting it.",
-      parameters: {
-        type: "object",
-        properties: { path: { type: "string" }, content: { type: "string" } },
-        required: ["path", "content"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "bash",
-      description: "Run a shell command and return its output.",
-      parameters: {
-        type: "object",
-        properties: { command: { type: "string" } },
-        required: ["command"],
-      },
-    },
-  },
-];
-
-const handlers: Record<string, (args: any) => string> = {
-  read_file: ({ path }) => readFileSync(path, "utf8"),
-  write_file: ({ path, content }) => {
-    writeFileSync(path, content);
-    return `wrote ${content.length} bytes to ${path}`;
-  },
-  bash: ({ command }) =>
-    execSync(command, { encoding: "utf8", timeout: 30_000, stdio: "pipe" }),
 };
 
 function pathAllowed(p: string): boolean {
@@ -147,7 +98,9 @@ async function turn(input: string): Promise<void> {
         result = DENIED;
       } else {
         try {
-          result = handlers[fn.name]?.(fn.arguments) ?? `unknown tool: ${fn.name}`;
+          result =
+            (await handlers[fn.name]?.(fn.arguments)) ??
+            `unknown tool: ${fn.name}`;
         } catch (err: any) {
           result = `error: ${err.message}`;
         }
