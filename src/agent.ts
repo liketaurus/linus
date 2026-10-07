@@ -11,11 +11,14 @@ const allowList: { paths: string[]; commands: string[] } = JSON.parse(
   readFileSync(new URL("../allowList.json", import.meta.url), "utf8"),
 );
 
-const DENIED =
-  `This tool call is unallowed. ` +
-  `Available paths: ${allowList.paths.join(", ")}. ` +
-  `Available commands: ${allowList.commands.join(", ")}. ` +
-  `End turn and explain this to user.`;
+const prompt = (name: string) =>
+  readFileSync(new URL(`../prompts/${name}.md`, import.meta.url), "utf8").trim();
+
+const SYSTEM = prompt("system");
+
+const DENIED = prompt("denied")
+  .replace("{paths}", allowList.paths.join(", "))
+  .replace("{commands}", allowList.commands.join(", "));
 
 type ToolCall = { function: { name: string; arguments: Record<string, any> } };
 
@@ -52,13 +55,7 @@ function allowed(name: string, args: any): boolean {
 }
 
 // The whole context strategy: one array, append forever, never trim.
-const messages: Msg[] = [
-  {
-    role: "system",
-    content:
-      "You are a coding agent. Use the tools to inspect and modify files. Be brief.",
-  },
-];
+const messages: Msg[] = [{ role: "system", content: SYSTEM }];
 
 async function call(): Promise<Msg> {
   const res = await fetch(`${OLLAMA}/api/chat`, {
