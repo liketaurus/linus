@@ -1,0 +1,8 @@
+{
+  "name": "linus",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "linus": "src/agent.ts"
+  }
+}

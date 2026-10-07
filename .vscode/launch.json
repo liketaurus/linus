@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run poopity",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/agent.ts",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/playground",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}
