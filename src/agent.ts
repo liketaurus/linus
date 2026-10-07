@@ -2,9 +2,20 @@
 import { createInterface } from "node:readline/promises";
 import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { resolve, relative, isAbsolute } from "node:path";
 
 const OLLAMA = process.env.OLLAMA_HOST ?? "http://127.0.0.1:11434";
 const MODEL = process.env.AGENT_MODEL ?? "granite4:tiny-h";
+
+const allowList: { paths: string[]; commands: string[] } = JSON.parse(
+  readFileSync(new URL("../allowList.json", import.meta.url), "utf8"),
+);
+
+const DENIED =
+  `This tool call is unallowed. ` +
+  `Available paths: ${allowList.paths.join(", ")}. ` +
+  `Available commands: ${allowList.commands.join(", ")}. ` +
+  `End turn and explain this to user.`;
 
 type ToolCall = { function: { name: string; arguments: Record<string, any> } };
 
@@ -64,6 +75,31 @@ const handlers: Record<string, (args: any) => string> = {
     execSync(command, { encoding: "utf8", timeout: 30_000, stdio: "pipe" }),
 };
 
+function pathAllowed(p: string): boolean {
+  const target = resolve(p);
+  return allowList.paths.some((root) => {
+    const rel = relative(resolve(root), target);
+    return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+  });
+}
+
+// Anything that lets one command become two is refused outright.
+const SHELL_METACHARACTERS = /[;&|<>`$(){}\n]/;
+
+function commandAllowed(command: string): boolean {
+  if (SHELL_METACHARACTERS.test(command)) return false;
+  const [bin] = command.trim().split(/\s+/);
+  return allowList.commands.includes(bin);
+}
+
+function allowed(name: string, args: any): boolean {
+  if (name === "bash") return commandAllowed(args.command ?? "");
+  if (name === "read_file" || name === "write_file") {
+    return pathAllowed(args.path ?? "");
+  }
+  return true;
+}
+
 // The whole context strategy: one array, append forever, never trim.
 const messages: Msg[] = [
   {
@@ -106,10 +142,15 @@ async function turn(input: string): Promise<void> {
     for (const { function: fn } of calls) {
       console.log(`  -> ${fn.name}(${JSON.stringify(fn.arguments)})`);
       let result: string;
-      try {
-        result = handlers[fn.name]?.(fn.arguments) ?? `unknown tool: ${fn.name}`;
-      } catch (err: any) {
-        result = `error: ${err.message}`;
+      if (!allowed(fn.name, fn.arguments)) {
+        console.log(`  !! denied by allowList`);
+        result = DENIED;
+      } else {
+        try {
+          result = handlers[fn.name]?.(fn.arguments) ?? `unknown tool: ${fn.name}`;
+        } catch (err: any) {
+          result = `error: ${err.message}`;
+        }
       }
       messages.push({ role: "tool", tool_name: fn.name, content: String(result) });
     }

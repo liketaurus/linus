@@ -1,0 +1,4 @@
+{
+  "paths": ["."],
+  "commands": ["ls", "cat", "nl", "wc", "head", "tail", "echo", "pwd", "grep", "find"]
+}
