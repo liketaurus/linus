@@ -2,32 +2,19 @@
 import { createInterface } from "node:readline/promises";
 import { readFileSync } from "node:fs";
 import { resolve, relative, isAbsolute } from "node:path";
+import { ask, prompt, MODEL } from "./llm.ts";
+import type { Msg } from "./llm.ts";
 import { tools, handlers } from "./tools/index.ts";
-
-const OLLAMA = process.env.OLLAMA_HOST ?? "http://127.0.0.1:11434";
-const MODEL = process.env.AGENT_MODEL ?? "granite4:tiny-h";
 
 const allowList: { paths: string[]; commands: string[] } = JSON.parse(
   readFileSync(new URL("../allowList.json", import.meta.url), "utf8"),
 );
-
-const prompt = (name: string) =>
-  readFileSync(new URL(`../prompts/${name}.md`, import.meta.url), "utf8").trim();
 
 const SYSTEM = prompt("system");
 
 const DENIED = prompt("denied")
   .replace("{paths}", allowList.paths.join(", "))
   .replace("{commands}", allowList.commands.join(", "));
-
-type ToolCall = { function: { name: string; arguments: Record<string, any> } };
-
-type Msg = {
-  role: "system" | "user" | "assistant" | "tool";
-  content: string;
-  tool_calls?: ToolCall[];
-  tool_name?: string;
-};
 
 function pathAllowed(p: string): boolean {
   const target = resolve(p);
@@ -57,28 +44,11 @@ function allowed(name: string, args: any): boolean {
 // The whole context strategy: one array, append forever, never trim.
 const messages: Msg[] = [{ role: "system", content: SYSTEM }];
 
-async function call(): Promise<Msg> {
-  const res = await fetch(`${OLLAMA}/api/chat`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-      tools,
-      stream: false,
-      options: { num_ctx: 8192, temperature: 0.2 },
-    }),
-  });
-  const body = await res.json();
-  if (body.error) throw new Error(body.error);
-  return body.message;
-}
-
 async function turn(input: string): Promise<void> {
   messages.push({ role: "user", content: input });
 
   while (true) {
-    const reply = await call();
+    const reply = await ask(messages, { tools });
     messages.push(reply);
 
     const calls = reply.tool_calls ?? [];
