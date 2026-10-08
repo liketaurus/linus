@@ -1,0 +1,11 @@
+{
+  "name": "telegram-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.ts"
+  },
+  "dependencies": {
+    "telegram": "^2.26.22"
+  }
+}
