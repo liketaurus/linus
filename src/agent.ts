@@ -5,6 +5,7 @@ import { resolve, relative, isAbsolute } from "node:path";
 import { ask, prompt, MODEL } from "./llm.ts";
 import type { Msg } from "./llm.ts";
 import { tools, handlers } from "./tools/index.ts";
+import { select } from "./select.ts";
 
 const allowList: { paths: string[]; commands: string[] } = JSON.parse(
   readFileSync(new URL("../allowList.json", import.meta.url), "utf8"),
@@ -47,8 +48,11 @@ const messages: Msg[] = [{ role: "system", content: SYSTEM }];
 async function turn(input: string): Promise<void> {
   messages.push({ role: "user", content: input });
 
+  // Fifty-five tools will not fit in a prompt worth sending. Shrink first.
+  const picked = await select(input, tools);
+
   while (true) {
-    const reply = await ask(messages, { tools });
+    const reply = await ask(messages, { tools: picked });
     messages.push(reply);
 
     const calls = reply.tool_calls ?? [];
