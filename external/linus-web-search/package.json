@@ -1,0 +1,11 @@
+{
+  "name": "linus-web-search",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.ts"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
