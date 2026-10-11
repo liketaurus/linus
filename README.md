@@ -1,33 +1,33 @@
 # Linus
 
-Linus is a small terminal-based coding agent powered by a local [Ollama](https://ollama.com/) model. It keeps the conversation in memory, lets the model choose relevant tools for each request, and restricts file and shell access through an allow list.
+Linus - невеликий термінальний агент для програмування, що працює з локальною моделлю [Ollama](https://ollama.com/). Він зберігає контекст діалогу в пам'яті, дає моделі змогу обирати доречні інструменти для кожного запиту та обмежує доступ до файлів і команд через список дозволів.
 
-## Features
+## Можливості
 
-- Interactive CLI conversation with a locally running Ollama model.
-- Tool selection before each model turn to keep the tool prompt small.
-- Read and overwrite files within approved directories.
-- Run only explicitly approved shell commands, without shell metacharacters.
-- Current weather lookup through Open-Meteo.
-- Web search through the included `linus-web-search` local service.
+- Інтерактивний CLI-діалог з локально запущеною моделлю Ollama.
+- Вибір інструментів перед кожним зверненням до моделі, щоб зменшити розмір промпту.
+- Читання та перезапис файлів у дозволених каталогах.
+- Виконання лише явно дозволених shell-команд без спеціальних символів оболонки.
+- Отримання поточної погоди через Open-Meteo.
+- Пошук у вебі через локальний сервіс `linus-web-search`, що входить до репозиторію.
 
-The tool catalog also contains placeholder integrations such as email, GitHub, Jira, and deployment actions. They are intentionally no-ops and return that they are not implemented.
+Каталог інструментів також містить заглушки інтеграцій для email, GitHub, Jira та розгортання. Вони навмисно не реалізовані й повідомляють про це у відповіді.
 
-## Requirements
+## Вимоги
 
-- Node.js 22.6 or later, with TypeScript type stripping support.
-- Ollama running locally, with a compatible model installed. The default is `granite4:tiny-h`.
-- npm, to install the web-search service dependency.
+- Node.js 22.6 або новішої версії з підтримкою видалення типів TypeScript.
+- Локально запущений Ollama із сумісною завантаженою моделлю. Типова модель - `granite4:tiny-h`.
+- npm для встановлення залежності сервісу веб-пошуку.
 
-## Quick start
+## Швидкий старт
 
-1. Start Ollama and download the default model:
+1. Запустіть Ollama та завантажте типову модель:
 
    ```powershell
    ollama pull granite4:tiny-h
    ```
 
-2. Install and start the search service in a separate terminal:
+2. Встановіть і запустіть сервіс пошуку в окремому терміналі:
 
    ```powershell
    cd external\linus-web-search
@@ -35,64 +35,64 @@ The tool catalog also contains placeholder integrations such as email, GitHub, J
    npm start
    ```
 
-   The service listens on `http://127.0.0.1:8787` by default.
+   Типово сервіс слухає на `http://127.0.0.1:8787`.
 
-3. Start Linus from `playground`, so its default file access is limited to that directory:
+3. Запустіть Linus із каталогу `playground`, щоб типовий доступ до файлів був обмежений цим каталогом:
 
    ```powershell
    cd playground
    node ..\src\agent.ts
    ```
 
-4. Enter a request at the `>` prompt. Type `/exit` to quit.
+4. Введіть запит у рядку з `>`. Щоб завершити роботу, введіть `/exit`.
 
-## Configuration
+## Налаштування
 
-| Variable | Default | Description |
+| Змінна | Типове значення | Опис |
 | --- | --- | --- |
-| `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama server URL. |
-| `AGENT_MODEL` | `granite4:tiny-h` | Ollama model used by Linus. |
-| `SEARCH_SERVICE` | `http://127.0.0.1:8787` | URL of the local search service. |
-| `PORT` | `8787` | Port used by `linus-web-search`. |
+| `OLLAMA_HOST` | `http://127.0.0.1:11434` | URL сервера Ollama. |
+| `AGENT_MODEL` | `granite4:tiny-h` | Модель Ollama, яку використовує Linus. |
+| `SEARCH_SERVICE` | `http://127.0.0.1:8787` | URL локального сервісу пошуку. |
+| `PORT` | `8787` | Порт сервісу `linus-web-search`. |
 
-For example:
+Наприклад:
 
 ```powershell
 $env:AGENT_MODEL = "qwen2.5-coder:7b"
 node ..\src\agent.ts
 ```
 
-## Access control
+## Контроль доступу
 
-`allowList.json` defines the paths and commands that Linus may use. By default it permits file reads and writes only under the current directory (`.`), and the following commands:
+`allowList.json` визначає шляхи та команди, які може використовувати Linus. Типово читання і запис файлів дозволені лише в поточному каталозі (`.`), а також доступні такі команди:
 
 ```text
 ls cat nl wc head tail echo pwd grep find
 ```
 
-Shell commands containing chaining, redirects, substitutions, or other shell metacharacters are rejected. Update `allowList.json` deliberately before expanding access.
+Команди оболонки з ланцюжками, перенаправленнями, підстановками чи іншими спеціальними символами відхиляються. Змінюйте `allowList.json` зважено, перш ніж розширювати доступ.
 
-## Project structure
+## Структура проєкту
 
 ```text
 src/
-  agent.ts             Interactive agent loop and access checks
-  llm.ts               Ollama client and prompt loader
-  select.ts            Tool-selection model call
-  tools/               File, shell, weather, and web-search tools
-prompts/               System and tool-selection prompts
+  agent.ts             Інтерактивний цикл агента та перевірки доступу
+  llm.ts               Клієнт Ollama та завантаження промптів
+  select.ts            Звернення до моделі для вибору інструментів
+  tools/               Інструменти для файлів, shell, погоди та веб-пошуку
+prompts/               Системні промпти та промпти вибору інструментів
 external/
-  linus-web-search/    Local DuckDuckGo-backed search HTTP service
-playground/            Safe default working directory for the agent
-allowList.json         Permitted paths and shell commands
+  linus-web-search/    Локальний HTTP-сервіс пошуку на основі DuckDuckGo
+playground/            Безпечний типовий робочий каталог агента
+allowList.json         Дозволені шляхи та shell-команди
 ```
 
-## Web search service
+## Сервіс веб-пошуку
 
-`linus-web-search` exposes:
+`linus-web-search` надає такий endpoint:
 
 ```text
-GET /search?q=<query>&n=<count>
+GET /search?q=<запит>&n=<кількість>
 ```
 
-It requests DuckDuckGo's HTML endpoint and returns up to 25 normalized results. The agent uses the service to formulate search queries and summarize the returned sources. If the service is not running, only requests that need web search fail; the rest of the agent remains usable.
+Сервіс звертається до HTML-сторінки DuckDuckGo та повертає до 25 нормалізованих результатів. Агент використовує його, щоб сформулювати пошукові запити та підсумувати знайдені джерела. Якщо сервіс не запущений, не працюватимуть лише запити, яким потрібен веб-пошук; решта функцій агента залишиться доступною.
